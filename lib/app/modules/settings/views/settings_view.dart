@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:ultimate_alarm_clock/app/modules/settings/views/customize_undo_duration.dart';
 import 'package:ultimate_alarm_clock/app/modules/settings/views/enable_24Hour_format.dart';
@@ -12,7 +13,9 @@ import '../controllers/settings_controller.dart';
 import 'google_sign_in.dart';
 
 class SettingsView extends GetView<SettingsController> {
-  const SettingsView({super.key});
+  SettingsView({super.key});
+
+  MethodChannel alarmChannel = MethodChannel('ulticlock');
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +124,9 @@ class SettingsView extends GetView<SettingsController> {
                 const SizedBox(
                   height: 20,
                 ),
+                TextButton(onPressed: () {
+                  alarmChannel.invokeMethod('pairing');
+                }, child: Text("Check for wearOS watch")),
               ],
             ),
           ),

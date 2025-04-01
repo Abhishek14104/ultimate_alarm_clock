@@ -23,6 +23,9 @@ import io.flutter.plugin.common.MethodChannel
 
 
 class MainActivity : FlutterActivity() {
+
+    private lateinit var wearOSCommunicator: WearOSCommunicator
+
     companion object {
         const val CHANNEL1 = "ulticlock"
         const val CHANNEL2 = "timer"
@@ -36,6 +39,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        wearOSCommunicator = WearOSCommunicator(this)
+
         var intentFilter = IntentFilter()
         intentFilter.addAction("com.ccextractor.ultimate_alarm_clock.START_TIMERNOTIF")
         intentFilter.addAction("com.ccextractor.ultimate_alarm_clock.STOP_TIMERNOTIF")
@@ -135,7 +141,10 @@ class MainActivity : FlutterActivity() {
             } else if (call.method == "stopDefaultAlarm") {
                 stopDefaultAlarm()
                 result.success(null)
-            } else {
+            } else if(call.method == "pairing") {
+                wearOSCommunicator.sendAcknowledgment()
+                result.success(null)
+            }else {
                 result.notImplemented()
             }
         }
