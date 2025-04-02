@@ -110,6 +110,12 @@ class MainActivity : FlutterActivity() {
                 val ringTime = getLatestAlarm(db, true, profile ?: "Default", context)
                 Log.d("yay yay", "yay ${ringTime ?: "null"}")
                 if (ringTime != null) {
+
+                    val interval = ringTime["interval"]!! as Long
+                    Log.d("Sending to Watch", "Interval: $interval")
+
+                    wearOSCommunicator.sendAlarmIntervalToWatch(interval)
+
                     android.util.Log.d("yay", "yay ${ringTime["interval"]}")
                     Log.d("yay", "yay ${ringTime["isLocation"]}")
                     scheduleAlarm(

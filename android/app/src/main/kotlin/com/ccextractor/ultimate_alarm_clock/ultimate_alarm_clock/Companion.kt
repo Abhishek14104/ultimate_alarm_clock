@@ -41,6 +41,15 @@ class WearOSCommunicator(private val context: Context) :
         }
     }
 
+    fun sendAlarmIntervalToWatch(interval: Long) {
+        val dataClient = Wearable.getDataClient(context)
+        val putDataReq = PutDataMapRequest.create("/alarm_interval").run {
+            dataMap.putLong("interval", interval)
+            asPutDataRequest()
+        }
+        dataClient.putDataItem(putDataReq)
+    }
+
     private fun getConnectedNodes(): List<String> {
         val nodeListTask = Wearable.getNodeClient(context).connectedNodes
         return try {
