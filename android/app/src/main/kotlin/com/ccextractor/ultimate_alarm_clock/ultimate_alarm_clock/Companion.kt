@@ -2,14 +2,16 @@ package com.ccextractor.ultimate_alarm_clock
 
 import kotlinx.coroutines.*
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.*
+import com.google.android.gms.wearable.DataClient.OnDataChangedListener
+import com.google.android.gms.wearable.MessageClient
 import java.nio.charset.StandardCharsets
 
 class WearOSCommunicator(private val context: Context) :
-    MessageClient.OnMessageReceivedListener {
+    MessageClient.OnMessageReceivedListener,
+    OnDataChangedListener {
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val APP_OPEN_WEARABLE_PAYLOAD_PATH = "/APP_OPEN_WEARABLE_PAYLOAD"
@@ -19,6 +21,7 @@ class WearOSCommunicator(private val context: Context) :
 
     init {
         Wearable.getMessageClient(context).addListener(this)
+        Wearable.getDataClient(context).addListener(this)
     }
 
     fun sendAcknowledgment() {
@@ -47,9 +50,41 @@ class WearOSCommunicator(private val context: Context) :
             dataMap.putLong("interval", interval)
             asPutDataRequest()
         }
-        dataClient.putDataItem(putDataReq)
+        dataClient.putDataItem(putDataReq).addOnSuccessListener {
+            Log.d("WearOSCommunicator", "Interval sent to watch successfully: $interval")
+        }.addOnFailureListener {
+            Log.e("WearOSCommunicator", "Failed to send interval to watch")
+        }
+    }
+    
+    // Handle incoming data changes from the Wear OS device
+    override fun onDataChanged(dataEvents: DataEventBuffer) {
+        for (event in dataEvents) {
+            if (event.type == DataEvent.TYPE_CHANGED) {
+                val path = event.dataItem.uri.path
+                if (path == "/interval_from_watch") {
+                    val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+                    val interval = dataMap.getLong("interval", -1L)
+                    Log.d("WearOSCommunicator", "Interval received from watch: $interval")
+                }
+            }
+        }
     }
 
+    // Handle incoming messages from the Wear OS device
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        val receivedMessage = String(messageEvent.data, StandardCharsets.UTF_8)
+        Log.d("WearOSCommunicator", "Received message: $receivedMessage")
+
+        if (messageEvent.path == APP_OPEN_WEARABLE_PAYLOAD_PATH) {
+            if (receivedMessage == wearableAppCheckPayloadReturnACK) {
+                currentAckFromWearForAppOpenCheck = receivedMessage
+                Log.d("WearOSCommunicator", "✅ Acknowledgment received from Wear OS device")
+            }
+        }
+    }
+
+    // Get the list of connected nodes (wearable devices)
     private fun getConnectedNodes(): List<String> {
         val nodeListTask = Wearable.getNodeClient(context).connectedNodes
         return try {
@@ -61,20 +96,9 @@ class WearOSCommunicator(private val context: Context) :
         }
     }
 
-    override fun onMessageReceived(messageEvent: MessageEvent) {
-        val receivedMessage = String(messageEvent.data, StandardCharsets.UTF_8)
-        Log.d("WearOSCommunicator", "Received message: $receivedMessage")
-
-        if (messageEvent.path == APP_OPEN_WEARABLE_PAYLOAD_PATH) {
-            if (receivedMessage == wearableAppCheckPayloadReturnACK) {
-                currentAckFromWearForAppOpenCheck = receivedMessage
-                Log.d("WearOSCommunicator", "Acknowledgment received from Wear OS device")
-            }
-        }
-    }
-
     fun cleanup() {
         Wearable.getMessageClient(context).removeListener(this)
+        Wearable.getDataClient(context).removeListener(this)
         coroutineScope.coroutineContext.cancel()
     }
 }
